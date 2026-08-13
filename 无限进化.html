@@ -1,0 +1,1700 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>塔防-无限进化</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #1a1a2e;
+            color: #eee;
+            font-family: 'Microsoft YaHei', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        /* 顶部信息栏 */
+        .top-bar {
+            display: flex;
+            gap: 20px;
+            padding: 10px 20px;
+            background: #16213e;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+        }
+
+        .stat-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .gold-icon { background: #ffd700; color: #333; }
+        .hp-icon { background: #e74c3c; }
+        .wave-icon { background: #3498db; }
+        .kill-icon { background: #9b59b6; }
+
+        /* 游戏区域 */
+        .game-container {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        /* 画布 */
+        canvas {
+            border: 2px solid #0f3460;
+            border-radius: 10px;
+            background: #0a0a1a;
+            cursor: crosshair;
+        }
+
+        /* 右侧/底部面板 */
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-width: 200px;
+        }
+
+        /* 塔选择区 */
+        .tower-shop {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .shop-title {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #e94560;
+            font-size: 16px;
+        }
+
+        .tower-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .tower-btn {
+            padding: 8px 5px;
+            border: 2px solid #0f3460;
+            border-radius: 8px;
+            background: #1a1a2e;
+            color: #eee;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        .tower-btn:hover {
+            border-color: #e94560;
+            transform: scale(1.05);
+        }
+
+        .tower-btn.selected {
+            border-color: #e94560;
+            background: #0f3460;
+        }
+
+        .tower-btn .tower-name {
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+
+        .tower-btn .tower-price {
+            color: #ffd700;
+            font-size: 11px;
+        }
+
+        .tower-btn .tower-desc {
+            color: #888;
+            font-size: 10px;
+            margin-top: 2px;
+        }
+
+        /* 控制按钮 */
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            flex: 1;
+            min-width: 80px;
+        }
+
+        .btn-start {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-start:hover {
+            background: #2ecc71;
+        }
+
+        .btn-pause {
+            background: #f39c12;
+            color: white;
+        }
+
+        .btn-reset {
+            background: #e74c3c;
+            color: white;
+        }
+
+        /* 难度选择 */
+        .difficulty {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .difficulty-title {
+            text-align: center;
+            margin-bottom: 8px;
+            color: #e94560;
+            font-size: 14px;
+        }
+
+        .diff-options {
+            display: flex;
+            gap: 5px;
+        }
+
+        .diff-btn {
+            flex: 1;
+            padding: 8px;
+            border: 2px solid #0f3460;
+            border-radius: 6px;
+            background: #1a1a2e;
+            color: #eee;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .diff-btn.active {
+            border-color: #e94560;
+            background: #0f3460;
+        }
+
+        /* 游戏日志 */
+        .game-log {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            padding: 3px 0;
+            border-bottom: 1px solid #0f3460;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        /* 塔信息提示 */
+        .tower-info {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 12px;
+            min-height: 80px;
+        }
+
+        .info-title {
+            color: #e94560;
+            margin-bottom: 5px;
+        }
+
+        /* 波次进度 */
+        .wave-progress {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #0f3460;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #e94560;
+            transition: width 0.3s;
+            border-radius: 10px;
+        }
+
+        /* 游戏结束画面 */
+        .game-over {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .game-over-content {
+            background: #16213e;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+        }
+
+        .game-over h2 {
+            color: #e94560;
+            margin-bottom: 20px;
+            font-size: 32px;
+        }
+
+        .game-over p {
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+
+        /* 浮动伤害数字 */
+        .damage-text {
+            position: absolute;
+            color: #fff;
+            font-weight: bold;
+            font-size: 14px;
+            pointer-events: none;
+            animation: floatUp 1s ease-out forwards;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-30px); }
+        }
+
+        /* 响应式 */
+        @media (max-width: 800px) {
+            .game-container {
+                flex-direction: column;
+            }
+            .side-panel {
+                width: 100%;
+                max-width: 600px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部信息栏 -->
+    <div class="top-bar">
+        <div class="stat">
+            <span class="stat-icon gold-icon">💰</span>
+            <span id="gold">800</span>
+        </div>
+        <div class="stat">
+            <span class="stat-icon hp-icon">❤️</span>
+            <span id="hp">20</span>
+        </div>
+        <div class="stat">
+            <span class="stat-icon wave-icon">🌊</span>
+            <span>波次: <span id="wave">0</span></span>
+        </div>
+        <div class="stat">
+            <span class="stat-icon kill-icon">⚔️</span>
+            <span>击杀: <span id="kills">0</span></span>
+        </div>
+        <div class="stat">
+            <span>难度: <span id="diff-display">普通</span></span>
+        </div>
+    </div>
+
+    <!-- 游戏主区域 -->
+    <div class="game-container">
+        <canvas id="gameCanvas" width="600" height="500"></canvas>
+        
+        <div class="side-panel">
+            <!-- 难度选择 -->
+            <div class="difficulty">
+                <div class="difficulty-title">难度选择</div>
+                <div class="diff-options">
+                    <button class="diff-btn active" onclick="setDifficulty('normal')">普通</button>
+                    <button class="diff-btn" onclick="setDifficulty('hard')">困难</button>
+                    <button class="diff-btn" onclick="setDifficulty('hell')">地狱</button>
+                </div>
+            </div>
+
+            <!-- 塔商店 -->
+            <div class="tower-shop">
+                <div class="shop-title">防御塔商店</div>
+                <div class="tower-grid" id="towerShop">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+
+            <!-- 选中塔信息 -->
+            <div class="tower-info" id="towerInfo">
+                <div class="info-title">点击选择防御塔</div>
+                <div>在地图上点击放置</div>
+            </div>
+
+            <!-- 波次进度 -->
+            <div class="wave-progress">
+                <div>当前波次进度</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="waveProgress" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- 控制按钮 -->
+            <div class="controls">
+                <button class="btn btn-start" id="startBtn" onclick="toggleWave()">开始波次</button>
+                <button class="btn btn-pause" onclick="togglePause()">暂停</button>
+                <button class="btn btn-reset" onclick="resetGame()">重置</button>
+            </div>
+
+            <!-- 游戏日志 -->
+            <div class="game-log" id="gameLog">
+                <div class="log-entry">欢迎来到塔防-无限进化！</div>
+                <div class="log-entry">选择难度，建造防御塔，抵御怪物进攻！</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏结束画面 -->
+    <div class="game-over" id="gameOver">
+        <div class="game-over-content">
+            <h2 id="gameOverTitle">游戏结束</h2>
+            <p id="gameOverText"></p>
+            <button class="btn btn-start" onclick="resetGame()">再来一局</button>
+        </div>
+    </div>
+
+    <script>
+        // ============ 游戏配置 ============
+        const CANVAS_WIDTH = 600;
+        const CANVAS_HEIGHT = 500;
+        const GRID_SIZE = 40;
+        const COLS = CANVAS_WIDTH / GRID_SIZE;
+        const ROWS = CANVAS_HEIGHT / GRID_SIZE;
+
+        // 难度配置
+        const DIFFICULTY = {
+            normal: { 
+                name: '普通', 
+                hpMult: 1, 
+                speedMult: 1, 
+                rewardMult: 1,
+                waveInterval: 3000,
+                eliteChance: 0.1
+            },
+            hard: { 
+                name: '困难', 
+                hpMult: 1.5, 
+                speedMult: 1.3, 
+                rewardMult: 0.8,
+                waveInterval: 2500,
+                eliteChance: 0.25,
+                specialEnemies: true
+            },
+            hell: { 
+                name: '地狱', 
+                hpMult: 2.5, 
+                speedMult: 1.6, 
+                rewardMult: 0.6,
+                waveInterval: 2000,
+                eliteChance: 0.4,
+                specialEnemies: true,
+                dynamicPath: true,
+                priceInflation: true
+            }
+        };
+
+        // 防御塔配置
+        const TOWERS = {
+            basic: {
+                name: '基础',
+                price: 50,
+                damage: 15,
+                range: 2.5,
+                fireRate: 1000,
+                color: '#95a5a6',
+                desc: '均衡的入门塔',
+                projectile: 'bullet',
+                projectileSpeed: 8
+            },
+            rapid: {
+                name: '速射',
+                price: 100,
+                damage: 8,
+                range: 2,
+                fireRate: 300,
+                color: '#e74c3c',
+                desc: '超高攻速，低伤害',
+                projectile: 'bullet',
+                projectileSpeed: 10
+            },
+            heavy: {
+                name: '重型',
+                price: 150,
+                damage: 50,
+                range: 2,
+                fireRate: 2000,
+                color: '#8e44ad',
+                desc: '高伤害，慢攻速',
+                projectile: 'cannon',
+                projectileSpeed: 5,
+                splash: 1
+            },
+            sniper: {
+                name: '狙击',
+                price: 200,
+                damage: 100,
+                range: 5,
+                fireRate: 2500,
+                color: '#2ecc71',
+                desc: '超远射程，精准打击',
+                projectile: 'laser',
+                projectileSpeed: 20,
+                pierce: true
+            },
+            laser: {
+                name: '激光',
+                price: 250,
+                damage: 5,
+                range: 3,
+                fireRate: 100,
+                color: '#e94560',
+                desc: '持续伤害，可叠加',
+                projectile: 'beam',
+                beamWidth: 3
+            },
+            missile: {
+                name: '导弹',
+                price: 300,
+                damage: 80,
+                range: 4,
+                fireRate: 2000,
+                color: '#f39c12',
+                desc: '追踪导弹，范围伤害',
+                projectile: 'missile',
+                projectileSpeed: 4,
+                splash: 2,
+                homing: true
+            },
+            flame: {
+                name: '火焰',
+                price: 180,
+                damage: 3,
+                range: 2,
+                fireRate: 100,
+                color: '#e67e22',
+                desc: '持续灼烧，范围伤害',
+                projectile: 'flame',
+                splash: 1.5,
+                dot: true
+            },
+            ice: {
+                name: '冰冻',
+                price: 150,
+                damage: 5,
+                range: 2.5,
+                fireRate: 1500,
+                color: '#3498db',
+                desc: '减速敌人',
+                projectile: 'ice',
+                projectileSpeed: 6,
+                slow: 0.5,
+                slowDuration: 2000
+            },
+            shock: {
+                name: '电击',
+                price: 220,
+                damage: 25,
+                range: 3,
+                fireRate: 1200,
+                color: '#f1c40f',
+                desc: '链式电击，弹射3次',
+                projectile: 'lightning',
+                chain: 3,
+                chainRange: 2
+            },
+            poison: {
+                name: '毒素',
+                price: 160,
+                damage: 2,
+                range: 2.5,
+                fireRate: 800,
+                color: '#27ae60',
+                desc: '中毒持续伤害',
+                projectile: 'poison',
+                projectileSpeed: 5,
+                dot: true,
+                dotDuration: 5000,
+                dotDamage: 10
+            },
+            plasma: {
+                name: '等离子',
+                price: 400,
+                damage: 40,
+                range: 3.5,
+                fireRate: 800,
+                color: '#9b59b6',
+                desc: '穿透敌人，高伤害',
+                projectile: 'plasma',
+                projectileSpeed: 7,
+                pierce: true,
+                pierceCount: 3
+            },
+            blackhole: {
+                name: '黑洞',
+                price: 500,
+                damage: 2,
+                range: 2,
+                fireRate: 100,
+                color: '#2c3e50',
+                desc: '吸引敌人，持续伤害',
+                projectile: 'blackhole',
+                pullRadius: 3,
+                pullStrength: 0.3
+            },
+            nuke: {
+                name: '核弹',
+                price: 800,
+                damage: 500,
+                range: 5,
+                fireRate: 5000,
+                color: '#c0392b',
+                desc: '毁灭性范围伤害',
+                projectile: 'nuke',
+                projectileSpeed: 2,
+                splash: 4,
+                chargeTime: 2000
+            }
+        };
+
+        // 敌人类型
+        const ENEMIES = {
+            basic: { name: '普通怪', hp: 50, speed: 1, reward: 10, color: '#e74c3c', radius: 12 },
+            fast: { name: '快速怪', hp: 30, speed: 2, reward: 15, color: '#f39c12', radius: 10 },
+            tank: { name: '坦克怪', hp: 150, speed: 0.5, reward: 25, color: '#8e44ad', radius: 16 },
+            elite: { name: '精英怪', hp: 300, speed: 1.2, reward: 50, color: '#c0392b', radius: 18, armor: 0.3 },
+            splitter: { name: '分裂怪', hp: 80, speed: 1, reward: 20, color: '#27ae60', radius: 14, split: true },
+            teleporter: { name: '瞬移怪', hp: 60, speed: 1.3, reward: 30, color: '#3498db', radius: 12, teleport: true },
+            flying: { name: '飞行怪', hp: 40, speed: 1.5, reward: 20, color: '#9b59b6', radius: 11, flying: true },
+            boss: { name: 'BOSS', hp: 2000, speed: 0.3, reward: 200, color: '#e94560', radius: 25, armor: 0.5, boss: true }
+        };
+
+        // ============ 游戏状态 ============
+        let canvas, ctx;
+        let gameState = 'idle'; // idle, wave, paused, gameover
+        let currentDifficulty = 'normal';
+        let gold = 800;
+        let hp = 20;
+        let wave = 0;
+        let kills = 0;
+        let selectedTower = null;
+        let towers = [];
+        let enemies = [];
+        let projectiles = [];
+        let particles = [];
+        let waveEnemies = [];
+        let waveSpawnTimer = 0;
+        let waveSpawnIndex = 0;
+        let frameCount = 0;
+        let mouseX = 0, mouseY = 0;
+        let towerCounts = {};
+        let pathCells = [];
+        let currentPath = [];
+
+        // 路径定义（可扩展为动态）
+        const PATHS = [
+            // 路径1: 经典蛇形
+            [[0,2],[3,2],[3,5],[7,5],[7,2],[11,2],[11,7],[5,7],[5,9],[14,9]],
+            // 路径2: 双螺旋
+            [[0,4],[4,4],[4,1],[8,1],[8,8],[12,8],[12,3],[14,3]],
+            // 路径3: 复杂迷宫
+            [[0,1],[2,1],[2,6],[5,6],[5,2],[9,2],[9,7],[12,7],[12,4],[14,4]]
+        ];
+
+        // ============ 初始化 ============
+        function init() {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            
+            // 设置初始路径
+            setPath(0);
+            
+            // 生成商店
+            generateShop();
+            
+            // 事件监听
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('click', onCanvasClick);
+            
+            // 开始游戏循环
+            requestAnimationFrame(gameLoop);
+            
+            log('游戏初始化完成！');
+        }
+
+        function setPath(pathIndex) {
+            currentPath = PATHS[pathIndex % PATHS.length].map(p => ({ x: p[0], y: p[1] }));
+            pathCells = [];
+            
+            // 生成路径格子
+            for (let i = 0; i < currentPath.length - 1; i++) {
+                let start = currentPath[i];
+                let end = currentPath[i + 1];
+                
+                let dx = Math.sign(end.x - start.x);
+                let dy = Math.sign(end.y - start.y);
+                let x = start.x, y = start.y;
+                
+                while (x !== end.x || y !== end.y) {
+                    pathCells.push({ x, y });
+                    x += dx;
+                    y += dy;
+                }
+            }
+            pathCells.push(currentPath[currentPath.length - 1]);
+        }
+
+        function generateShop() {
+            const shop = document.getElementById('towerShop');
+            shop.innerHTML = '';
+            
+            for (let key in TOWERS) {
+                const tower = TOWERS[key];
+                const btn = document.createElement('button');
+                btn.className = 'tower-btn';
+                btn.innerHTML = `
+                    <div class="tower-name">${tower.name}</div>
+                    <div class="tower-price">💰${tower.price}</div>
+                    <div class="tower-desc">${tower.desc}</div>
+                `;
+                btn.onclick = () => selectTower(key, btn);
+                shop.appendChild(btn);
+            }
+        }
+
+        function selectTower(type, btnElement) {
+            selectedTower = type;
+            document.querySelectorAll('.tower-btn').forEach(b => b.classList.remove('selected'));
+            btnElement.classList.add('selected');
+            
+            const tower = TOWERS[type];
+            document.getElementById('towerInfo').innerHTML = `
+                <div class="info-title">${tower.name}塔</div>
+                <div>伤害: ${tower.damage} | 射程: ${tower.range}格</div>
+                <div>攻速: ${(1000/tower.fireRate).toFixed(1)}/秒</div>
+                <div style="color: #888; margin-top: 5px;">${tower.desc}</div>
+            `;
+        }
+
+        function setDifficulty(diff) {
+            currentDifficulty = diff;
+            document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('diff-display').textContent = DIFFICULTY[diff].name;
+            
+            // 地狱模式可能改变路径
+            if (DIFFICULTY[diff].dynamicPath) {
+                setPath(Math.floor(Math.random() * PATHS.length));
+                log('地狱模式：路径已随机改变！');
+            }
+            
+            resetGame();
+        }
+
+        // ============ 游戏逻辑 ============
+        function toggleWave() {
+            if (gameState === 'idle' || gameState === 'wave' && waveEnemies.length === 0) {
+                startWave();
+            }
+        }
+
+        function startWave() {
+            wave++;
+            gameState = 'wave';
+            waveSpawnIndex = 0;
+            waveSpawnTimer = 0;
+            
+            // 生成波次敌人
+            waveEnemies = generateWave(wave);
+            
+            document.getElementById('startBtn').textContent = '波次进行中...';
+            document.getElementById('wave').textContent = wave;
+            
+            log(`第${wave}波开始！敌人数量: ${waveEnemies.length}`);
+        }
+
+        function generateWave(waveNum) {
+            const diff = DIFFICULTY[currentDifficulty];
+            const enemies = [];
+            const count = 5 + waveNum * 3;
+            
+            for (let i = 0; i < count; i++) {
+                let type = 'basic';
+                
+                // 根据波次和难度选择敌人类型
+                if (waveNum >= 3 && Math.random() < 0.3) type = 'fast';
+                if (waveNum >= 5 && Math.random() < 0.2) type = 'tank';
+                if (waveNum >= 7 && Math.random() < diff.eliteChance) type = 'elite';
+                
+                // 困难/地狱模式特殊敌人
+                if (diff.specialEnemies) {
+                    if (waveNum >= 4 && Math.random() < 0.15) type = 'splitter';
+                    if (waveNum >= 6 && Math.random() < 0.15) type = 'teleporter';
+                    if (waveNum >= 8 && Math.random() < 0.2) type = 'flying';
+                }
+                
+                // Boss波
+                if (waveNum % 10 === 0 && i === 0) type = 'boss';
+                
+                enemies.push({
+                    type: type,
+                    spawnDelay: i * (diff.waveInterval / count)
+                });
+            }
+            
+            return enemies;
+        }
+
+        function togglePause() {
+            if (gameState === 'wave') {
+                gameState = 'paused';
+                log('游戏已暂停');
+            } else if (gameState === 'paused') {
+                gameState = 'wave';
+                log('游戏继续');
+            }
+        }
+
+        function resetGame() {
+            gameState = 'idle';
+            gold = 800;
+            hp = 20;
+            wave = 0;
+            kills = 0;
+            towers = [];
+            enemies = [];
+            projectiles = [];
+            particles = [];
+            waveEnemies = [];
+            towerCounts = {};
+            
+            // 重新随机路径（地狱模式）
+            if (DIFFICULTY[currentDifficulty].dynamicPath) {
+                setPath(Math.floor(Math.random() * PATHS.length));
+            }
+            
+            updateUI();
+            document.getElementById('startBtn').textContent = '开始波次';
+            document.getElementById('gameOver').style.display = 'none';
+            log('游戏已重置');
+        }
+
+        function gameOver() {
+            gameState = 'gameover';
+            document.getElementById('gameOverTitle').textContent = hp <= 0 ? '游戏失败' : '恭喜通关！';
+            document.getElementById('gameOverText').textContent = 
+                `存活波次: ${wave} | 击杀敌人: ${kills} | 剩余金币: ${gold}`;
+            document.getElementById('gameOver').style.display = 'flex';
+        }
+
+        // ============ 放置塔 ============
+        function onMouseMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        }
+
+        function onCanvasClick(e) {
+            if (!selectedTower || gameState === 'gameover') return;
+            
+            const gridX = Math.floor(mouseX / GRID_SIZE);
+            const gridY = Math.floor(mouseY / GRID_SIZE);
+            
+            // 检查是否在路径上
+            if (isPath(gridX, gridY)) {
+                log('不能在路径上放置防御塔！');
+                return;
+            }
+            
+            // 检查是否已有塔
+            if (towers.some(t => t.x === gridX && t.y === gridY)) {
+                log('该位置已有防御塔！');
+                return;
+            }
+            
+            const towerType = TOWERS[selectedTower];
+            let price = towerType.price;
+            
+            // 地狱模式价格膨胀
+            if (DIFFICULTY[currentDifficulty].priceInflation) {
+                const count = towerCounts[selectedTower] || 0;
+                price = Math.floor(price * (1 + count * 0.2));
+            }
+            
+            if (gold < price) {
+                log('金币不足！');
+                return;
+            }
+            
+            // 放置塔
+            gold -= price;
+            towerCounts[selectedTower] = (towerCounts[selectedTower] || 0) + 1;
+            
+            towers.push({
+                type: selectedTower,
+                x: gridX,
+                y: gridY,
+                lastFire: 0,
+                angle: 0,
+                target: null,
+                chargeTimer: 0
+            });
+            
+            // 创建放置特效
+            createParticles(gridX * GRID_SIZE + GRID_SIZE/2, gridY * GRID_SIZE + GRID_SIZE/2, towerType.color, 10);
+            
+            updateUI();
+            log(`放置了${towerType.name}塔！`);
+        }
+
+        function isPath(x, y) {
+            return pathCells.some(p => p.x === x && p.y === y);
+        }
+
+        // ============ 游戏主循环 ============
+        function gameLoop(timestamp) {
+            frameCount++;
+            
+            if (gameState === 'wave') {
+                update(timestamp);
+            }
+            
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function update(timestamp) {
+            const diff = DIFFICULTY[currentDifficulty];
+            
+            // 生成敌人
+            if (waveSpawnIndex < waveEnemies.length) {
+                waveSpawnTimer += 16; // 约60fps
+                if (waveSpawnTimer >= waveEnemies[waveSpawnIndex].spawnDelay) {
+                    spawnEnemy(waveEnemies[waveSpawnIndex].type);
+                    waveSpawnIndex++;
+                    waveSpawnTimer = 0;
+                }
+            }
+            
+            // 更新敌人
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                updateEnemy(enemy, diff);
+                
+                // 到达终点
+                if (enemy.pathIndex >= currentPath.length - 1) {
+                    hp--;
+                    enemies.splice(i, 1);
+                    updateUI();
+                    
+                    if (hp <= 0) {
+                        gameOver();
+                        return;
+                    }
+                    continue;
+                }
+                
+                // 死亡
+                if (enemy.hp <= 0) {
+                    // 分裂怪
+                    if (enemy.split && !enemy.isChild) {
+                        for (let j = 0; j < 2; j++) {
+                            enemies.push({
+                                ...ENEMIES.basic,
+                                x: enemy.x,
+                                y: enemy.y,
+                                hp: ENEMIES.basic.hp * diff.hpMult,
+                                maxHp: ENEMIES.basic.hp * diff.hpMult,
+                                pathIndex: enemy.pathIndex,
+                                pathProgress: enemy.pathProgress,
+                                isChild: true,
+                                slowTimer: 0,
+                                dotTimer: 0,
+                                dotDamage: 0
+                            });
+                        }
+                    }
+                    
+                    gold += ENEMIES[enemy.type].reward * diff.rewardMult;
+                    kills++;
+                    createParticles(enemy.x, enemy.y, ENEMIES[enemy.type].color, 8);
+                    enemies.splice(i, 1);
+                    updateUI();
+                    continue;
+                }
+            }
+            
+            // 更新防御塔
+            towers.forEach(tower => {
+                updateTower(tower, timestamp);
+            });
+            
+            // 更新投射物
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const proj = projectiles[i];
+                updateProjectile(proj);
+                
+                if (proj.life <= 0 || proj.hit) {
+                    projectiles.splice(i, 1);
+                }
+            }
+            
+            // 更新粒子
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].life--;
+                particles[i].x += particles[i].vx;
+                particles[i].y += particles[i].vy;
+                if (particles[i].life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+            
+            // 检查波次结束
+            if (waveSpawnIndex >= waveEnemies.length && enemies.length === 0) {
+                gameState = 'idle';
+                document.getElementById('startBtn').textContent = '开始波次';
+                gold += 50 + wave * 10; // 波次奖励
+                updateUI();
+                log(`第${wave}波完成！获得波次奖励`);
+            }
+            
+            // 更新波次进度条
+            const progress = waveEnemies.length > 0 ? (waveSpawnIndex / waveEnemies.length) * 100 : 0;
+            document.getElementById('waveProgress').style.width = progress + '%';
+        }
+
+        function spawnEnemy(type) {
+            const diff = DIFFICULTY[currentDifficulty];
+            const enemyData = ENEMIES[type];
+            
+            enemies.push({
+                type: type,
+                x: currentPath[0].x * GRID_SIZE + GRID_SIZE/2,
+                y: currentPath[0].y * GRID_SIZE + GRID_SIZE/2,
+                hp: enemyData.hp * diff.hpMult * (1 + wave * 0.1),
+                maxHp: enemyData.hp * diff.hpMult * (1 + wave * 0.1),
+                speed: enemyData.speed * diff.speedMult,
+                pathIndex: 0,
+                pathProgress: 0,
+                slowTimer: 0,
+                dotTimer: 0,
+                dotDamage: 0,
+                teleportTimer: type === 'teleporter' ? 2000 : 0
+            });
+        }
+
+        function updateEnemy(enemy, diff) {
+            const enemyData = ENEMIES[enemy.type];
+            
+            // 减速效果
+            let currentSpeed = enemy.speed;
+            if (enemy.slowTimer > 0) {
+                currentSpeed *= 0.5;
+                enemy.slowTimer -= 16;
+            }
+            
+            // 持续伤害
+            if (enemy.dotTimer > 0) {
+                enemy.hp -= enemy.dotDamage * (16 / 1000);
+                enemy.dotTimer -= 16;
+            }
+            
+            // 瞬移怪
+            if (enemyData.teleport) {
+                enemy.teleportTimer -= 16;
+                if (enemy.teleportTimer <= 0) {
+                    enemy.teleportTimer = 3000;
+                    // 随机向前传送
+                    enemy.pathIndex = Math.min(enemy.pathIndex + 2, currentPath.length - 2);
+                    const target = currentPath[enemy.pathIndex];
+                    enemy.x = target.x * GRID_SIZE + GRID_SIZE/2;
+                    enemy.y = target.y * GRID_SIZE + GRID_SIZE/2;
+                    createParticles(enemy.x, enemy.y, '#3498db', 5);
+                }
+            }
+            
+            // 移动
+            const target = currentPath[enemy.pathIndex + 1];
+            if (!target) return;
+            
+            const tx = target.x * GRID_SIZE + GRID_SIZE/2;
+            const ty = target.y * GRID_SIZE + GRID_SIZE/2;
+            const dx = tx - enemy.x;
+            const dy = ty - enemy.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist < 2) {
+                enemy.pathIndex++;
+                enemy.pathProgress = 0;
+            } else {
+                enemy.x += (dx / dist) * currentSpeed;
+                enemy.y += (dy / dist) * currentSpeed;
+            }
+        }
+
+        function updateTower(tower, timestamp) {
+            const towerData = TOWERS[tower.type];
+            const tx = tower.x * GRID_SIZE + GRID_SIZE/2;
+            const ty = tower.y * GRID_SIZE + GRID_SIZE/2;
+            
+            // 寻找目标
+            let target = null;
+            let minDist = Infinity;
+            
+            for (let enemy of enemies) {
+                const enemyData = ENEMIES[enemy.type];
+                
+                // 飞行怪只能被特定塔攻击（简化：所有塔都能打，但黑洞对飞行怪效果差）
+                const dx = enemy.x - tx;
+                const dy = enemy.y - ty;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const range = towerData.range * GRID_SIZE;
+                
+                if (dist <= range && dist < minDist) {
+                    // 黑洞对飞行怪效果差
+                    if (tower.type === 'blackhole' && enemyData.flying) continue;
+                    
+                    minDist = dist;
+                    target = enemy;
+                }
+            }
+            
+            tower.target = target;
+            
+            if (!target) return;
+            
+            // 计算角度
+            tower.angle = Math.atan2(target.y - ty, target.x - tx);
+            
+            // 充能（核弹）
+            if (towerData.chargeTime) {
+                if (tower.chargeTimer < towerData.chargeTime) {
+                    tower.chargeTimer += 16;
+                    return;
+                }
+                tower.chargeTimer = 0;
+            }
+            
+            // 射击
+            if (timestamp - tower.lastFire >= towerData.fireRate) {
+                tower.lastFire = timestamp;
+                fireProjectile(tower, target, towerData);
+            }
+        }
+
+        function fireProjectile(tower, target, towerData) {
+            const tx = tower.x * GRID_SIZE + GRID_SIZE/2;
+            const ty = tower.y * GRID_SIZE + GRID_SIZE/2;
+            
+            // 激光束（即时伤害，无投射物）
+            if (towerData.projectile === 'beam') {
+                // 持续伤害在updateTower中处理，这里只画效果
+                return;
+            }
+            
+            // 黑洞效果
+            if (towerData.projectile === 'blackhole') {
+                // 吸引范围内的敌人
+                const pullRange = (towerData.pullRadius || 3) * GRID_SIZE;
+                for (let enemy of enemies) {
+                    const dx = enemy.x - tx;
+                    const dy = enemy.y - ty;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist <= pullRange && dist > 20) {
+                        const pullStrength = towerData.pullStrength || 0.3;
+                        enemy.x -= (dx / dist) * pullStrength * 5;
+                        enemy.y -= (dy / dist) * pullStrength * 5;
+                    }
+                    
+                    // 在黑洞中心受到伤害
+                    if (dist < 30) {
+                        enemy.hp -= towerData.damage;
+                    }
+                }
+                return;
+            }
+            
+            projectiles.push({
+                x: tx,
+                y: ty,
+                target: towerData.homing ? target : null,
+                targetX: target.x,
+                targetY: target.y,
+                type: towerData.projectile,
+                damage: towerData.damage,
+                speed: towerData.projectileSpeed || 5,
+                color: towerData.color,
+                life: 100,
+                splash: towerData.splash || 0,
+                pierce: towerData.pierce || false,
+                pierceCount: towerData.pierceCount || 0,
+                slow: towerData.slow || 0,
+                slowDuration: towerData.slowDuration || 0,
+                dot: towerData.dot || false,
+                dotDuration: towerData.dotDuration || 0,
+                dotDamage: towerData.dotDamage || 0,
+                chain: towerData.chain || 0,
+                chainRange: towerData.chainRange || 0,
+                hit: false,
+                hitEnemies: []
+            });
+        }
+
+        function updateProjectile(proj) {
+            const towerData = TOWERS[Object.keys(TOWERS).find(k => TOWERS[k].color === proj.color)] || {};
+            
+            // 追踪导弹
+            if (proj.target && enemies.includes(proj.target)) {
+                proj.targetX = proj.target.x;
+                proj.targetY = proj.target.y;
+            }
+            
+            // 移动
+            const dx = proj.targetX - proj.x;
+            const dy = proj.targetY - proj.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist < 5 || proj.life <= 0) {
+                // 命中
+                proj.hit = true;
+                
+                // 范围伤害
+                if (proj.splash > 0) {
+                    const splashRange = proj.splash * GRID_SIZE;
+                    for (let enemy of enemies) {
+                        const edx = enemy.x - proj.x;
+                        const edy = enemy.y - proj.y;
+                        const edist = Math.sqrt(edx * edx + edy * edy);
+                        
+                        if (edist <= splashRange) {
+                            damageEnemy(enemy, proj.damage * (1 - edist / splashRange * 0.5), proj);
+                        }
+                    }
+                    createParticles(proj.x, proj.y, proj.color, 15);
+                } else {
+                    // 单体伤害
+                    for (let enemy of enemies) {
+                        const edx = enemy.x - proj.x;
+                        const edy = enemy.y - proj.y;
+                        const edist = Math.sqrt(edx * edx + edy * edy);
+                        
+                        if (edist < 20) {
+                            damageEnemy(enemy, proj.damage, proj);
+                            
+                            // 穿透
+                            if (proj.pierce && proj.pierceCount > 0) {
+                                proj.pierceCount--;
+                                proj.hit = false;
+                                proj.hitEnemies.push(enemy);
+                            }
+                            break;
+                        }
+                    }
+                }
+                
+                // 链式电击
+                if (proj.chain > 0) {
+                    chainLightning(proj.x, proj.y, proj.chain, proj.chainRange * GRID_SIZE, proj.damage * 0.7, proj);
+                }
+            } else {
+                proj.x += (dx / dist) * proj.speed;
+                proj.y += (dy / dist) * proj.speed;
+                proj.life--;
+            }
+        }
+
+        function damageEnemy(enemy, damage, proj) {
+            // 护甲减伤
+            const enemyData = ENEMIES[enemy.type];
+            let finalDamage = damage;
+            if (enemyData.armor) {
+                finalDamage *= (1 - enemyData.armor);
+            }
+            
+            enemy.hp -= finalDamage;
+            
+            // 减速
+            if (proj.slow > 0) {
+                enemy.slowTimer = proj.slowDuration;
+            }
+            
+            // 中毒
+            if (proj.dot) {
+                enemy.dotTimer = proj.dotDuration;
+                enemy.dotDamage = proj.dotDamage / (proj.dotDuration / 1000);
+            }
+            
+            // 显示伤害数字
+            showDamage(enemy.x, enemy.y, Math.floor(finalDamage));
+        }
+
+        function chainLightning(x, y, chainCount, range, damage, originalProj) {
+            if (chainCount <= 0) return;
+            
+            let closest = null;
+            let minDist = Infinity;
+            
+            for (let enemy of enemies) {
+                if (originalProj.hitEnemies.includes(enemy)) continue;
+                
+                const dx = enemy.x - x;
+                const dy = enemy.y - y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist <= range && dist < minDist) {
+                    minDist = dist;
+                    closest = enemy;
+                }
+            }
+            
+            if (closest) {
+                closest.hp -= damage;
+                originalProj.hitEnemies.push(closest);
+                showDamage(closest.x, closest.y, Math.floor(damage));
+                
+                // 绘制闪电效果（简化）
+                createParticles((x + closest.x) / 2, (y + closest.y) / 2, '#f1c40f', 5);
+                
+                chainLightning(closest.x, closest.y, chainCount - 1, range, damage * 0.7, originalProj);
+            }
+        }
+
+        function showDamage(x, y, damage) {
+            const div = document.createElement('div');
+            div.className = 'damage-text';
+            div.textContent = damage;
+            div.style.left = (canvas.offsetLeft + x) + 'px';
+            div.style.top = (canvas.offsetTop + y - 20) + 'px';
+            document.body.appendChild(div);
+            
+            setTimeout(() => div.remove(), 1000);
+        }
+
+        function createParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                const angle = (Math.PI * 2 / count) * i + Math.random() * 0.5;
+                const speed = 1 + Math.random() * 3;
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 20 + Math.random() * 20,
+                    color: color,
+                    size: 2 + Math.random() * 3
+                });
+            }
+        }
+
+        // ============ 渲染 ============
+        function render() {
+            ctx.fillStyle = '#0a0a1a';
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            
+            // 绘制网格
+            ctx.strokeStyle = '#1a1a3e';
+            ctx.lineWidth = 1;
+            for (let x = 0; x <= CANVAS_WIDTH; x += GRID_SIZE) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, CANVAS_HEIGHT);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= CANVAS_HEIGHT; y += GRID_SIZE) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(CANVAS_WIDTH, y);
+                ctx.stroke();
+            }
+            
+            // 绘制路径
+            ctx.fillStyle = '#1a3a3a';
+            for (let cell of pathCells) {
+                ctx.fillRect(cell.x * GRID_SIZE + 1, cell.y * GRID_SIZE + 1, GRID_SIZE - 2, GRID_SIZE - 2);
+            }
+            
+            // 绘制起点和终点
+            if (currentPath.length > 0) {
+                const start = currentPath[0];
+                const end = currentPath[currentPath.length - 1];
+                
+                ctx.fillStyle = '#27ae60';
+                ctx.fillRect(start.x * GRID_SIZE + 5, start.y * GRID_SIZE + 5, GRID_SIZE - 10, GRID_SIZE - 10);
+                ctx.fillStyle = '#fff';
+                ctx.font = '12px Arial';
+                ctx.fillText('起', start.x * GRID_SIZE + 12, start.y * GRID_SIZE + 25);
+                
+                ctx.fillStyle = '#e74c3c';
+                ctx.fillRect(end.x * GRID_SIZE + 5, end.y * GRID_SIZE + 5, GRID_SIZE - 10, GRID_SIZE - 10);
+                ctx.fillStyle = '#fff';
+                ctx.fillText('终', end.x * GRID_SIZE + 12, end.y * GRID_SIZE + 25);
+            }
+            
+            // 绘制防御塔
+            for (let tower of towers) {
+                const towerData = TOWERS[tower.type];
+                const tx = tower.x * GRID_SIZE + GRID_SIZE/2;
+                const ty = tower.y * GRID_SIZE + GRID_SIZE/2;
+                
+                // 底座
+                ctx.fillStyle = '#2c3e50';
+                ctx.fillRect(tower.x * GRID_SIZE + 2, tower.y * GRID_SIZE + 2, GRID_SIZE - 4, GRID_SIZE - 4);
+                
+                // 塔身
+                ctx.fillStyle = towerData.color;
+                ctx.beginPath();
+                ctx.arc(tx, ty, 14, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 炮管方向
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(tx, ty);
+                ctx.lineTo(tx + Math.cos(tower.angle) * 18, ty + Math.sin(tower.angle) * 18);
+                ctx.stroke();
+                
+                // 射程指示（鼠标悬停）
+                const gridX = Math.floor(mouseX / GRID_SIZE);
+                const gridY = Math.floor(mouseY / GRID_SIZE);
+                if (gridX === tower.x && gridY === tower.y) {
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(tx, ty, towerData.range * GRID_SIZE, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
+            
+            // 绘制放置预览
+            if (selectedTower && gameState !== 'gameover') {
+                const gridX = Math.floor(mouseX / GRID_SIZE);
+                const gridY = Math.floor(mouseY / GRID_SIZE);
+                const towerData = TOWERS[selectedTower];
+                
+                if (gridX >= 0 && gridX < COLS && gridY >= 0 && gridY < ROWS) {
+                    const px = gridX * GRID_SIZE + GRID_SIZE/2;
+                    const py = gridY * GRID_SIZE + GRID_SIZE/2;
+                    
+                    // 射程预览
+                    ctx.strokeStyle = isPath(gridX, gridY) || towers.some(t => t.x === gridX && t.y === gridY) 
+                        ? 'rgba(231, 76, 60, 0.5)' 
+                        : 'rgba(46, 204, 113, 0.5)';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    ctx.arc(px, py, towerData.range * GRID_SIZE, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    
+                    // 放置预览
+                    ctx.fillStyle = isPath(gridX, gridY) || towers.some(t => t.x === gridX && t.y === gridY)
+                        ? 'rgba(231, 76, 60, 0.5)'
+                        : 'rgba(46, 204, 113, 0.5)';
+                    ctx.fillRect(gridX * GRID_SIZE + 2, gridY * GRID_SIZE + 2, GRID_SIZE - 4, GRID_SIZE - 4);
+                }
+            }
+            
+            // 绘制敌人
+            for (let enemy of enemies) {
+                const enemyData = ENEMIES[enemy.type];
+                
+                // 特殊效果
+                if (enemy.slowTimer > 0) {
+                    ctx.fillStyle = 'rgba(52, 152, 219, 0.3)';
+                    ctx.beginPath();
+                    ctx.arc(enemy.x, enemy.y, enemyData.radius + 5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                if (enemy.dotTimer > 0) {
+                    ctx.fillStyle = 'rgba(39, 174, 96, 0.3)';
+                    ctx.beginPath();
+                    ctx.arc(enemy.x, enemy.y, enemyData.radius + 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // 敌人本体
+                ctx.fillStyle = enemyData.color;
+                ctx.beginPath();
+                ctx.arc(enemy.x, enemy.y, enemyData.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 边框
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // 血条
+                const barWidth = enemyData.radius * 2;
+                const barHeight = 4;
+                const barX = enemy.x - barWidth / 2;
+                const barY = enemy.y - enemyData.radius - 8;
+                
+                ctx.fillStyle = '#333';
+                ctx.fillRect(barX, barY, barWidth, barHeight);
+                
+                const hpPercent = enemy.hp / enemy.maxHp;
+                ctx.fillStyle = hpPercent > 0.5 ? '#2ecc71' : hpPercent > 0.25 ? '#f39c12' : '#e74c3c';
+                ctx.fillRect(barX, barY, barWidth * hpPercent, barHeight);
+                
+                // Boss标记
+                if (enemyData.boss) {
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 10px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('BOSS', enemy.x, enemy.y + 4);
+                }
+            }
+            
+            // 绘制投射物
+            for (let proj of projectiles) {
+                ctx.fillStyle = proj.color;
+                
+                switch(proj.type) {
+                    case 'bullet':
+                        ctx.beginPath();
+                        ctx.arc(proj.x, proj.y, 4, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                    case 'cannon':
+                        ctx.fillRect(proj.x - 5, proj.y - 5, 10, 10);
+                        break;
+                    case 'laser':
+                        ctx.fillRect(proj.x - 2, proj.y - 2, 4, 4);
+                        // 激光尾迹
+                        ctx.strokeStyle = proj.color;
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(proj.x, proj.y);
+                        ctx.lineTo(proj.x - Math.cos(Math.atan2(proj.targetY - proj.y, proj.targetX - proj.x)) * 20,
+                                   proj.y - Math.sin(Math.atan2(proj.targetY - proj.y, proj.targetX - proj.x)) * 20);
+                        ctx.stroke();
+                        break;
+                    case 'missile':
+                        ctx.beginPath();
+                        ctx.arc(proj.x, proj.y, 5, 0, Math.PI * 2);
+                        ctx.fill();
+                        // 尾焰
+                        ctx.fillStyle = '#e74c3c';
+                        ctx.beginPath();
+                        ctx.arc(proj.x - (proj.targetX - proj.x) * 0.1, 
+                               proj.y - (proj.targetY - proj.y) * 0.1, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                    case 'flame':
+                        ctx.fillStyle = `hsl(${20 + Math.random() * 40}, 100%, 50%)`;
+                        ctx.beginPath();
+                        ctx.arc(proj.x, proj.y, 6 + Math.random() * 4, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                    case 'ice':
+                        ctx.fillStyle = '#aed6f1';
+                        ctx.beginPath();
+                        ctx.moveTo(proj.x, proj.y - 6);
+                        ctx.lineTo(proj.x + 5, proj.y + 4);
+                        ctx.lineTo(proj.x - 5, proj.y + 4);
+                        ctx.closePath();
+                        ctx.fill();
+                        break;
+                    case 'lightning':
+                        ctx.strokeStyle = '#f1c40f';
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.moveTo(proj.x, proj.y);
+                        ctx.lineTo(proj.x + (Math.random() - 0.5) * 10, proj.y + (Math.random() - 0.5) * 10);
+                        ctx.stroke();
+                        break;
+                    case 'poison':
+                        ctx.fillStyle = '#27ae60';
+                        ctx.beginPath();
+                        ctx.arc(proj.x, proj.y, 5, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = '#2ecc71';
+                        ctx.beginPath();
+                        ctx.arc(proj.x + 2, proj.y - 2, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                    case 'plasma':
+                        ctx.fillStyle = '#9b59b6';
+                        ctx.beginPath();
+                        ctx.arc(proj.x, proj.y, 7, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = '#e8daef';
+                        ctx.beginPath();
+                        ctx.arc(proj.x, proj.y, 4, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                    case 'nuke':
+                        ctx.fillStyle = '#c0392b';
+                        ctx.beginPath();
+                        ctx.arc(proj.x, proj.y, 10, 0, Math.PI * 2);
+                        ctx.fill();
+                        // 闪烁效果
+                        if (frameCount % 10 < 5) {
+                            ctx.fillStyle = '#e74c3c';
+                            ctx.beginPath();
+                            ctx.arc(proj.x, proj.y, 6, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        break;
+                }
+            }
+            
+            // 绘制激光束
+            for (let tower of towers) {
+                if (tower.type === 'laser' && tower.target) {
+                    const towerData = TOWERS.laser;
+                    const tx = tower.x * GRID_SIZE + GRID_SIZE/2;
+                    const ty = tower.y * GRID_SIZE + GRID_SIZE/2;
+                    
+                    ctx.strokeStyle = towerData.color;
+                    ctx.lineWidth = towerData.beamWidth || 3;
+                    ctx.globalAlpha = 0.7 + Math.sin(frameCount * 0.3) * 0.3;
+                    ctx.beginPath();
+                    ctx.moveTo(tx, ty);
+                    ctx.lineTo(tower.target.x, tower.target.y);
+                    ctx.stroke();
+                    ctx.globalAlpha = 1;
+                    
+                    // 持续伤害
+                    tower.target.hp -= towerData.damage * 0.16; // 每帧伤害
+                }
+            }
+            
+            // 绘制黑洞效果
+            for (let tower of towers) {
+                if (tower.type === 'blackhole') {
+                    const tx = tower.x * GRID_SIZE + GRID_SIZE/2;
+                    const ty = tower.y * GRID_SIZE + GRID_SIZE/2;
+                    
+                    // 旋转的漩涡
+                    ctx.save();
+                    ctx.translate(tx, ty);
+                    ctx.rotate(frameCount * 0.05);
+                    
+                    for (let i = 0; i < 3; i++) {
+                        ctx.rotate(Math.PI * 2 / 3);
+                        ctx.strokeStyle = `rgba(44, 62, 80, ${0.5 + Math.sin(frameCount * 0.1) * 0.3})`;
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(0, 0, 15 + i * 8, 0, Math.PI * 1.5);
+                        ctx.stroke();
+                    }
+                    
+                    ctx.restore();
+                    
+                    // 中心
+                    ctx.fillStyle = '#000';
+                    ctx.beginPath();
+                    ctx.arc(tx, ty, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            
+            // 绘制粒子
+            for (let p of particles) {
+                ctx.globalAlpha = p.life / 40;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size * (p.life / 40), 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+            
+            // 暂停覆盖层
+            if (gameState === 'paused') {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 48px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('已暂停', CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
+            }
+        }
+
+        // ============ UI更新 ============
+        function updateUI() {
+            document.getElementById('gold').textContent = Math.floor(gold);
+            document.getElementById('hp').textContent = hp;
+            document.getElementById('wave').textContent = wave;
+            document.getElementById('kills').textContent = kills;
+        }
+
+        function log(message) {
+            const logEl = document.getElementById('gameLog');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logEl.insertBefore(entry, logEl.firstChild);
+            
+            // 限制日志数量
+            while (logEl.children.length > 20) {
+                logEl.removeChild(logEl.lastChild);
+            }
+        }
+
+        // 启动
+        window.onload = init;
+    </script>
+</body>
+</html>
