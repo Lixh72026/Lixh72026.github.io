@@ -628,7 +628,7 @@
             shock: { name: '电击', price: 220, damage: 25, range: 3, fireRate: 1200, color: '#f1c40f', desc: '链式电击，弹射4次', projectile: 'lightning', projectileSpeed: 15, chain: 4, chainRange: 3.5, chainDamageDecay: 0.2, hitRadius: 20 },
             poison: { name: '毒素', price: 160, damage: 2, range: 2.5, fireRate: 800, color: '#27ae60', desc: '中毒+易伤，全塔增伤', projectile: 'poison', projectileSpeed: 8, dot: true, dotDuration: 5000, dotDamage: 12, vulnerable: true, vulnerableMult: 1.3, vulnerableDuration: 5000, hitRadius: 15 },
             plasma: { name: '等离子', price: 400, damage: 32, range: 3.5, fireRate: 800, color: '#9b59b6', desc: '穿透4个敌人', projectile: 'plasma', projectileSpeed: 9, pierce: true, pierceCount: 4, hitRadius: 12 },
-            blackhole: { name: '黑洞', price: 500, damage: 3, range: 2, fireRate: 100, color: '#2c3e50', desc: '吸引敌人，飞行怪减半', projectile: 'blackhole', pullRadius: 3.5, pullStrength: 0.4, flyingPullMult: 0.5, centerDamageRadius: 40, hitRadius: 20 },
+            blackhole: { name: '黑洞', price: 500, damage: 10, range: 2, fireRate: 100, color: '#2c3e50', desc: '吸引敌人，飞行怪减半', projectile: 'blackhole', pullRadius: 3.5, pullStrength: 0.4, flyingPullMult: 0.5, centerDamageRadius: 40, hitRadius: 20 },
             nuke: { name: '核弹', price: 800, damage: 500, range: 5, fireRate: 5000, color: '#c0392b', desc: '毁灭性范围伤害', projectile: 'nuke', projectileSpeed: 3, splash: 4, chargeTime: 2000, hitRadius: 30 }
         };
 
@@ -1372,7 +1372,8 @@
             }
             
             // 修复：记录目标切换，但不重置lastFire
-            const prevTarget = tower.target;
+// 删除这行：
+//            const prevTarget = tower.target;
             tower.target = target;
             
             if (!target) return;
@@ -1380,6 +1381,12 @@
             // 计算炮管角度
             tower.angle = Math.atan2(target.y - ty, target.x - tx);
             
+    // ========== 激光塔：持续伤害，不生成投射物 ==========
+    if (towerData.projectile === 'beam') {
+        target.hp -= towerData.damage * 0.16;
+        return;
+    }
+    
             // 充能处理（核弹）
             if (towerData.chargeTime) {
                 if (tower.chargeTimer < towerData.chargeTime) {
@@ -1397,82 +1404,24 @@
             }
         }
 
-        function fireProjectile(tower, target, towerData) {
-            const tx = tower.x * GRID_SIZE + GRID_SIZE/2;
-            const ty = tower.y * GRID_SIZE + GRID_SIZE/2;
-            
-            if (towerData.projectile === 'beam') return;
-            
-            if (towerData.projectile === 'blackhole') {
-                const pullRange = (towerData.pullRadius || 3) * GRID_SIZE;
-                const centerRadius = towerData.centerDamageRadius || 40;
-                
-                for (let enemy of enemies) {
-                    const enemyData = ENEMIES[enemy.type];
-                    const dx = enemy.x - tx;
-                    const dy = enemy.y - ty;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    
-                    let effectivePull = towerData.pullStrength || 0.4;
-                    if (enemyData.flying) effectivePull *= (towerData.flyingPullMult || 0.5);
-                    
-                    if (dist <= pullRange && dist > 10) {
-                        enemy.x -= (dx / dist) * effectivePull * 5;
-                        enemy.y -= (dy / dist) * effectivePull * 5;
-                    }
-                    if (dist < centerRadius) {
-                        enemy.hp -= towerData.damage * (1 + (centerRadius - dist) / centerRadius);
-                    }
-                }
-                return;
-            }
-            
-            let targetX = target.x;
-            let targetY = target.y;
-            
-            if (towerData.aimAssist && target.speed) {
-                const predictTime = Math.sqrt((target.x - tx) ** 2 + (target.y - ty) ** 2) / (towerData.projectileSpeed * 5);
-                const targetPoint = currentPath[Math.min(target.pathIndex + 1, currentPath.length - 1)];
-                if (targetPoint) {
-                    const tdx = targetPoint.x * GRID_SIZE + GRID_SIZE/2 - target.x;
-                    const tdy = targetPoint.y * GRID_SIZE + GRID_SIZE/2 - target.y;
-                    const tdist = Math.sqrt(tdx * tdx + tdy * tdy);
-                    if (tdist > 0) {
-                        targetX += (tdx / tdist) * target.speed * predictTime * 0.5;
-                        targetY += (tdy / tdist) * target.speed * predictTime * 0.5;
-                    }
-                }
-            }
-            
-            projectiles.push({
-                x: tx, y: ty,
-                target: towerData.homing ? target : null,
-                targetX: targetX, targetY: targetY,
-                type: towerData.projectile,
-                damage: towerData.damage,
-                speed: towerData.projectileSpeed || 5,
-                color: towerData.color,
-                life: 120,
-                splash: towerData.splash || 0,
-                pierce: towerData.pierce || false,
-                pierceCount: towerData.pierceCount || 0,
-                piercedEnemies: [],
-                slow: towerData.slow || 0,
-                slowDuration: towerData.slowDuration || 0,
-                slowAmount: towerData.slow || 0,
-                dot: towerData.dot || false,
-                dotDuration: towerData.dotDuration || 0,
-                dotDamage: towerData.dotDamage || 0,
-                chain: towerData.chain || 0,
-                chainRange: towerData.chainRange || 0,
-                chainDamageDecay: towerData.chainDamageDecay || 0.3,
-                vulnerable: towerData.vulnerable || false,
-                vulnerableMult: towerData.vulnerableMult || 1.3,
-                vulnerableDuration: towerData.vulnerableDuration || 5000,
-                hit: false,
-                hitRadius: towerData.hitRadius || 15
-            });
-        }
+
+function applyIceEffect(enemy, proj, isDirectHit) {
+    let enemyData = ENEMIES[enemy.type] || {};
+    let slowAmount = proj.slow || 0.7;
+    let slowDuration = proj.slowDuration || 3000;
+    
+    if (enemyData.flying) {
+        slowAmount = Math.min(0.95, slowAmount + (proj.flyingSlowBonus || 0.2));
+        slowDuration = Math.floor(slowDuration * (proj.flyingSlowDurationBonus || 2));
+    }
+    
+    if (isDirectHit) {
+        slowAmount = Math.min(0.95, slowAmount + 0.1);
+    }
+    
+    enemy.slowAmount = slowAmount;
+    enemy.slowTimer = slowDuration;
+}
 
 function fireProjectile(tower, target, towerData) {
     const tx = tower.x * GRID_SIZE + GRID_SIZE/2;
@@ -1498,7 +1447,10 @@ function fireProjectile(tower, target, towerData) {
                 enemy.y -= (dy / dist) * effectivePull * 5;
             }
             if (dist < centerRadius) {
-                enemy.hp -= towerData.damage * (1 + (centerRadius - dist) / centerRadius);
+                // 伤害随距离衰减，中心最高
+                const damage = towerData.damage * (1 + (centerRadius - dist) / centerRadius);
+                // 走 damageEnemy 显示伤害数字和触发特效
+                damageEnemy(enemy, damage, { color: towerData.color });
             }
         }
         return;
@@ -1507,17 +1459,22 @@ function fireProjectile(tower, target, towerData) {
     let targetX = target.x;
     let targetY = target.y;
     
-    // ========== 狙击塔预判优化（百发百中） ==========
-    if (towerData.aimAssist && target.speed) {
+    // ========== 预判优化（狙击+等离子） ==========
+    if ((towerData.aimAssist || towerData.projectile === 'plasma') && target.speed) {
+        // 计算敌人实际速度（考虑减速）
+        let actualSpeed = target.speed;
+        if (target.slowTimer > 0) {
+            actualSpeed *= (1 - (target.slowAmount || 0.5));
+        }
+        
         const distToTarget = Math.sqrt((target.x - tx) ** 2 + (target.y - ty) ** 2);
         
-        // 极近距离：直瞄，不预判
+        // 极近距离直瞄
         if (distToTarget < 60) {
             targetX = target.x;
             targetY = target.y;
         } else {
-            // 中远距离：积极预判
-            const predictTime = distToTarget / (towerData.projectileSpeed * 6);
+            const predictTime = distToTarget / towerData.projectileSpeed;
             const targetPoint = currentPath[Math.min(target.pathIndex + 1, currentPath.length - 1)];
             
             if (targetPoint) {
@@ -1527,8 +1484,17 @@ function fireProjectile(tower, target, towerData) {
                 
                 if (tdist > 0) {
                     const moveAngle = Math.atan2(tdy, tdx);
-                    targetX = target.x + Math.cos(moveAngle) * target.speed * predictTime * 0.8;
-                    targetY = target.y + Math.sin(moveAngle) * target.speed * predictTime * 0.8;
+                    
+                    // 如果弹丸到达前敌人会转过弯，直接瞄转弯后的方向
+                    const framesToTurn = tdist / actualSpeed;
+                    if (predictTime >= framesToTurn && target.pathIndex + 2 < currentPath.length) {
+                        const afterTurn = currentPath[target.pathIndex + 2];
+                        targetX = afterTurn.x * GRID_SIZE + GRID_SIZE/2;
+                        targetY = afterTurn.y * GRID_SIZE + GRID_SIZE/2;
+                    } else {
+                        targetX = target.x + Math.cos(moveAngle) * actualSpeed * predictTime;
+                        targetY = target.y + Math.sin(moveAngle) * actualSpeed * predictTime;
+                    }
                 }
             }
         }
@@ -1566,21 +1532,8 @@ function fireProjectile(tower, target, towerData) {
 }
 
 function updateProjectile(proj) {
-    // 调试：记录每帧处理
-    if (!proj.debugId) {
-        proj.debugId = Math.random().toString(36).substr(2, 5);
-        proj.debugCount = 0;
-    }
-    proj.debugCount++;
-    
-    if (proj.debugCount > 1000) {
-        console.error('PROJ STUCK:', proj.type, proj.x, proj.y, proj.life, proj.hit);
-        proj.hit = true;  // 强制结束
-        return;
-    }
-    
-    // ... 原有逻辑
-    // ========== 追踪型导弹（动态角度，无绕圈） ==========
+
+    // ========== 追踪型导弹（导弹） ==========
     if (proj.target && enemies.includes(proj.target)) {
         let dx = proj.target.x - proj.x;
         let dy = proj.target.y - proj.y;
@@ -1589,48 +1542,14 @@ function updateProjectile(proj) {
         if (dist > 0) {
             let targetAngle = Math.atan2(dy, dx);
             
-            //原代码
-//            if (proj.currentAngle === undefined) {
-//                proj.currentAngle = targetAngle;
-//            }
-// 替换为：主动转向最近的未命中敌人
-if (proj.pierceCount > 0 && proj.piercedEnemies.length > 0) {
-    let nextTarget = null;
-    let minNextDist = Infinity;
-    
-    for (let enemy of enemies) {
-        if (proj.piercedEnemies.includes(enemy)) continue;
-        
-        let ndx = enemy.x - proj.x;
-        let ndy = enemy.y - proj.y;
-        let ndist = Math.sqrt(ndx * ndx + ndy * ndy);
-        
-        // 只考虑前方的敌人（大致同方向）
-        if (ndist < minNextDist && ndist < 150) {
-            let enemyAngle = Math.atan2(ndy, ndx);
-            let angleToEnemy = Math.abs(enemyAngle - proj.currentAngle);
-            while (angleToEnemy > Math.PI) angleToEnemy -= Math.PI * 2;
-            
-            if (Math.abs(angleToEnemy) < Math.PI * 0.6) { // 前方120度扇形
-                minNextDist = ndist;
-                nextTarget = enemy;
+            // 确保 currentAngle 初始化
+            if (proj.currentAngle === undefined || isNaN(proj.currentAngle)) {
+                proj.currentAngle = targetAngle;
             }
-        }
-    }
-    
-    if (nextTarget) {
-        // 平滑转向新目标
-        let newAngle = Math.atan2(nextTarget.y - proj.y, nextTarget.x - proj.x);
-        let turnDiff = newAngle - proj.currentAngle;
-        while (turnDiff > Math.PI) turnDiff -= Math.PI * 2;
-        while (turnDiff < -Math.PI) turnDiff += Math.PI * 2;
-        proj.currentAngle += Math.sign(turnDiff) * Math.min(Math.abs(turnDiff), 0.3);
-    } else {
-        // 没有合适目标，继续原方向
-        proj.currentAngle += (Math.random() - 0.5) * 0.2;
-    }
-}
             
+
+            
+            // 正常追踪
             let angleDiff = targetAngle - proj.currentAngle;
             while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
             while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
@@ -1642,20 +1561,21 @@ if (proj.pierceCount > 0 && proj.piercedEnemies.length > 0) {
             let actualTurn = Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), turnRate);
             proj.currentAngle += actualTurn;
             
+            // 防NaN
+            if (isNaN(proj.currentAngle)) proj.currentAngle = targetAngle;
+            
             proj.x += Math.cos(proj.currentAngle) * proj.speed;
             proj.y += Math.sin(proj.currentAngle) * proj.speed;
             proj.life--;
             
-            // 命中判定
-            let hitThreshold = Math.max(8, proj.hitRadius || 15);
-            
-            // 冰冻塔：命中即结束，不穿透
-            if (proj.type === 'ice' && dist < hitThreshold) {
+            // 防NaN坐标
+            if (isNaN(proj.x) || isNaN(proj.y)) {
                 proj.hit = true;
-                handleProjectileHit(proj);
                 return;
             }
             
+            // 命中判定
+            let hitThreshold = Math.max(8, proj.hitRadius || 15);
             if (dist < hitThreshold || proj.life <= 0) {
                 proj.hit = true;
                 handleProjectileHit(proj);
@@ -1664,7 +1584,7 @@ if (proj.pierceCount > 0 && proj.piercedEnemies.length > 0) {
         }
     }
     
-    // 非追踪弹
+    // ========== 非追踪弹（狙击、等离子、冰冻、电击等） ==========
     let dx = proj.targetX - proj.x;
     let dy = proj.targetY - proj.y;
     let dist = Math.sqrt(dx * dx + dy * dy);
@@ -1680,32 +1600,13 @@ if (proj.pierceCount > 0 && proj.piercedEnemies.length > 0) {
     }
 }
 
-function applyIceEffect(enemy, proj, isDirectHit) {
-    let enemyData = ENEMIES[enemy.type] || {};
-    let slowAmount = proj.slow || 0.7;
-    let slowDuration = proj.slowDuration || 3000;
-    
-    if (enemyData.flying) {
-        slowAmount = Math.min(0.95, slowAmount + (proj.flyingSlowBonus || 0.2));
-        slowDuration = Math.floor(slowDuration * (proj.flyingSlowDurationBonus || 2));
-    }
-    
-    if (isDirectHit) {
-        slowAmount = Math.min(0.95, slowAmount + 0.1);
-    }
-    
-    enemy.slowAmount = slowAmount;
-    enemy.slowTimer = slowDuration;
-}
-
 function handleProjectileHit(proj) {
-    // ========== 范围伤害（冰冻、火焰、导弹等）==========
+    // ========== 范围伤害（冰冻、火焰、导弹） ==========
     if (proj.splash > 0) {
         let splashRange = proj.splash * GRID_SIZE;
         let hitAny = false;
         
         for (let enemy of enemies) {
-            // 冰冻/范围效果可以重复影响同一敌人，但穿透标记的不重复造成伤害
             let alreadyHit = proj.piercedEnemies && proj.piercedEnemies.includes(enemy);
             
             let edx = enemy.x - proj.x;
@@ -1715,17 +1616,16 @@ function handleProjectileHit(proj) {
             if (edist <= splashRange) {
                 hitAny = true;
                 
-                // 冰冻效果：每次都可以重新上减速，但伤害只算一次
                 if (proj.type === 'ice') {
+                    // 冰冻：上减速，伤害只打一次
                     applyIceEffect(enemy, proj, edist <= splashRange * 0.5);
-                    // 冰冻伤害只打一次，用 piercedEnemies 标记
                     if (!alreadyHit) {
                         damageEnemy(enemy, proj.damage, proj);
                         if (!proj.piercedEnemies) proj.piercedEnemies = [];
                         proj.piercedEnemies.push(enemy);
                     }
                 } else {
-                    // 其他范围伤害（火焰、导弹等）
+                    // 火焰、导弹等范围伤害
                     let damage = proj.damage * (1 - edist / splashRange * 0.5);
                     damageEnemy(enemy, damage, proj);
                 }
@@ -1734,23 +1634,22 @@ function handleProjectileHit(proj) {
         
         createParticles(proj.x, proj.y, proj.color, 15);
         
-        // 冰冻塔没有穿透，命中即结束
+        // 冰冻塔无穿透，命中即结束
         if (proj.type === 'ice') {
             proj.hit = true;
             return;
         }
         
-        // 导弹等有穿透+范围的，继续判断
+        // 导弹等有穿透+范围，继续判断
         if (!hitAny) proj.hit = true;
         return;
     }
     
-    // ========== 单体伤害（狙击、电击等）==========
+    // ========== 单体伤害（狙击、等离子、电击） ==========
     let hitEnemy = null;
     let closestDist = Infinity;
     
     for (let enemy of enemies) {
-        // 跳过已穿透的
         if (proj.piercedEnemies && proj.piercedEnemies.includes(enemy)) continue;
         
         let edx = enemy.x - proj.x;
@@ -1766,48 +1665,51 @@ function handleProjectileHit(proj) {
     if (hitEnemy) {
         damageEnemy(hitEnemy, proj.damage, proj);
         
-        // 穿透处理
+        // 穿透处理（狙击、等离子）
         if (proj.pierce && proj.pierceCount > 0) {
             proj.pierceCount--;
             if (!proj.piercedEnemies) proj.piercedEnemies = [];
             proj.piercedEnemies.push(hitEnemy);
             proj.hit = false;
             
-            // 调整角度找下一个
-            if (proj.currentAngle !== undefined) {
+            // 非追踪弹：重新瞄准最近敌人
+            if (proj.target === null) {
                 let nextTarget = null;
-                let minNextDist = Infinity;
+                let bestScore = Infinity;
                 
-                for (let enemy of enemies) {
-                    if (proj.piercedEnemies.includes(enemy)) continue;
-                    
-                    let ndx = enemy.x - proj.x;
-                    let ndy = enemy.y - proj.y;
-                    let ndist = Math.sqrt(ndx * ndx + ndy * ndy);
-                    
-                    if (ndist < minNextDist && ndist < 150) {
-                        let enemyAngle = Math.atan2(ndy, ndx);
-                        let angleDiff = enemyAngle - proj.currentAngle;
-                        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-                        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-                        
-                        if (Math.abs(angleDiff) < Math.PI * 0.6) {
-                            minNextDist = ndist;
-                            nextTarget = enemy;
-                        }
-                    }
-                }
-                
-                if (nextTarget) {
-                    let newAngle = Math.atan2(nextTarget.y - proj.y, nextTarget.x - proj.x);
-                    let turnDiff = newAngle - proj.currentAngle;
-                    while (turnDiff > Math.PI) turnDiff -= Math.PI * 2;
-                    while (turnDiff < -Math.PI) turnDiff += Math.PI * 2;
-                    proj.currentAngle += Math.sign(turnDiff) * Math.min(Math.abs(turnDiff), 0.3);
-                } else {
-                    proj.currentAngle += (Math.random() - 0.5) * 0.2;
+    // 当前飞行方向
+    const currentAngle = Math.atan2(proj.targetY - proj.y, proj.targetX - proj.x);
+    
+    for (let enemy of enemies) {
+        if (proj.piercedEnemies.includes(enemy)) continue;
+        
+        let ndx = enemy.x - proj.x;
+        let ndy = enemy.y - proj.y;
+        let ndist = Math.sqrt(ndx * ndx + ndy * ndy);
+        
+        if (ndist < 200) {
+            let enemyAngle = Math.atan2(ndy, ndx);
+            let angleDiff = enemyAngle - currentAngle;
+            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+            
+            // 限制 ±30°（非追踪弹不应该拐大弯）
+            if (Math.abs(angleDiff) <= Math.PI * 0.16) {
+                let score = Math.abs(angleDiff) * 100 + ndist * 0.3;
+                if (score < bestScore) {
+                    bestScore = score;
+                    nextTarget = enemy;
                 }
             }
+        }
+    }
+    
+    if (nextTarget) {
+        proj.targetX = nextTarget.x;
+        proj.targetY = nextTarget.y;
+    }
+    // 找不到就保持原方向继续飞
+}
         } else if (proj.chain > 0) {
             chainLightning(hitEnemy.x, hitEnemy.y, proj.chain, proj.chainRange * GRID_SIZE,
                 proj.damage * (1 - proj.chainDamageDecay), proj);
@@ -1817,7 +1719,6 @@ function handleProjectileHit(proj) {
             proj.damage * (1 - proj.chainDamageDecay), proj);
     }
 }
-
 function damageEnemy(enemy, damage, proj) {
     let enemyData = ENEMIES[enemy.type] || ENEMIES.basic;
     let finalDamage = damage;
@@ -2241,7 +2142,7 @@ function damageEnemy(enemy, damage, proj) {
                     ctx.arc(tower.target.x, tower.target.y, 4 + Math.sin(frameCount * 0.8) * 2, 0, Math.PI * 2);
                     ctx.fill();
                     
-                    tower.target.hp -= towerData.damage * 0.16;
+//                    tower.target.hp -= towerData.damage * 0.16;
                 }
             }
             
